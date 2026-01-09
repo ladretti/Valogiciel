@@ -1,0 +1,51 @@
+name: Java Report for BankApplication
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  java-report:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Check for committed .class files
+      run: |
+        if git ls-files "*.class" | grep -q .; then
+          echo "Error: Compiled .class files are committed to the repository (bad practice)"
+          exit 1
+        fi
+
+    - name: Generate Java file report
+      run: |
+        java_files=$(git ls-files "*.java")
+        if [ -z "$java_files" ]; then
+          echo "Error: No .java files found in the repository"
+          exit 1
+        fi
+        
+        total_files=$(echo "$java_files" | wc -l)
+        total_lines=0
+        report="Number of .java files: $total_files\n"
+        
+        while IFS= read -r file; do
+          lines=$(wc -l < "$file")
+          total_lines=$((total_lines + lines))
+          report="${report}${file} – ${lines}\n"
+        done <<< "$java_files"
+        
+        report="${report}Total lines of code across all .java files: $total_lines\n"
+        
+        echo -e "$report" > java-file-report.txt
+        cat java-file-report.txt
+
+    - name: Upload report as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: java-file-report
+        path: java-file-report.txt
